@@ -1,21 +1,11 @@
 {
   "version": 2,
   "name": "aletheia",
-  "builds": [
-    {
-      "src": "frontend/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "projectSettings": {
-          "framework": "nextjs"
-        }
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
-    }
-  ]
+  "framework": "nextjs",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "npm install",
+  "devCommand": "npm run dev:frontend",
+  "ignoreCommand": "git diff HEAD^ HEAD --quiet .",
+  "regions": ["iad1"]
 }
