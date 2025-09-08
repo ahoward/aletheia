@@ -1,0 +1,198 @@
+// Prisma schema based on data-model.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  walletAddress String   @id @map("wallet_address")
+  ens           String?
+  role          String[] // Array of roles: underwriter, validator, miner, observer
+  reputation    Float?
+  createdAt     DateTime @default(now()) @map("created_at")
+  lastActive    DateTime @updatedAt @map("last_active")
+  settings      Json?
+
+  // Relations
+  createdNarratives NarrativeNFT[]     @relation("CreatedNarratives")
+  stakingPositions  StakingPosition[]
+  transactions      Transaction[]
+
+  @@map("users")
+}
+
+model NarrativeNFT {
+  tokenId      Int      @id @map("token_id")
+  contractAddress String @map("contract_address")
+  creator      String
+  name         String
+  description  String
+  tags         String[]
+  modality     String   // text, image, video, multimodal
+  embedding    Float[]  // 768-dimensional vector
+  metadataUri  String   @map("metadata_uri")
+  totalStaked  Decimal  @default(0) @map("total_staked") @db.Decimal(18, 8)
+  uniqueStakers Int     @default(0) @map("unique_stakers")
+  createdAt    DateTime @default(now()) @map("created_at")
+  lastActivity DateTime @updatedAt @map("last_activity")
+  status       String   @default("active") // active, paused, archived
+
+  // Relations
+  creatorUser         User                @relation("CreatedNarratives", fields: [creator], references: [walletAddress])
+  stakingPositions    StakingPosition[]
+  fulfillmentActivities FulfillmentActivity[]
+  disseminationProofs DisseminationProof[]
+  marketMetrics       MarketMetrics[]
+
+  @@map("narrative_nfts")
+}
+
+model StakingPosition {
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
+  narrativeId     Int      @map("narrative_id")
+  amount          Decimal  @db.Decimal(18, 8)
+  lockupPeriod    Int      @map("lockup_period") // days
+  stakedAt        DateTime @default(now()) @map("staked_at")
+  unlocksAt       DateTime @map("unlocks_at")
+  unstaked        Boolean  @default(false)
+  unstakedAt      DateTime? @map("unstaked_at")
+  returns         Decimal  @default(0) @db.Decimal(18, 8)
+  transactionHash String   @map("transaction_hash")
+
+  // Relations
+  user      User         @relation(fields: [userId], references: [walletAddress])
+  narrative NarrativeNFT @relation(fields: [narrativeId], references: [tokenId])
+
+  @@map("staking_positions")
+}
+
+model Validator {
+  uid                   Int      @id
+  walletAddress         String   @map("wallet_address")
+  consensusWeight       Float    @default(0) @map("consensus_weight")
+  reputationScore       Float    @default(0) @map("reputation_score")
+  totalValidations      Int      @default(0) @map("total_validations")
+  successfulValidations Int      @default(0) @map("successful_validations")
+  oracleEndpoint        String?  @map("oracle_endpoint")
+  isActive              Boolean  @default(true) @map("is_active")
+  lastValidation        DateTime? @map("last_validation")
+  registeredAt          DateTime @default(now()) @map("registered_at")
+
+  // Relations
+  fulfillmentActivities FulfillmentActivity[]
+
+  @@map("validators")
+}
+
+model Miner {
+  uid                     Int      @id
+  walletAddress           String   @map("wallet_address")
+  specialization          String   // text, image, video, multimodal
+  performanceScore        Float    @default(0) @map("performance_score")
+  totalGenerated          Int      @default(0) @map("total_generated")
+  successfulDisseminations Int     @default(0) @map("successful_disseminations")
+  rewardsEarned           Decimal  @default(0) @map("rewards_earned") @db.Decimal(18, 8)
+  isActive                Boolean  @default(true) @map("is_active")
+  lastActivity            DateTime @updatedAt @map("last_activity")
+  registeredAt            DateTime @default(now()) @map("registered_at")
+
+  // Relations
+  fulfillmentActivities FulfillmentActivity[]
+  disseminationProofs   DisseminationProof[]
+
+  @@map("miners")
+}
+
+model FulfillmentActivity {
+  id                 String   @id @default(cuid())
+  narrativeId        Int      @map("narrative_id")
+  minerId            Int      @map("miner_id")
+  contentHash        String   @map("content_hash")
+  contentType        String   @map("content_type") // text, image, video
+  coherenceScore     Float    @map("coherence_score")
+  demandScore        Float    @map("demand_score")
+  semanticSimilarity Float    @map("semantic_similarity")
+  generatedAt        DateTime @default(now()) @map("generated_at")
+  validatedAt        DateTime @map("validated_at")
+  validatorId        Int      @map("validator_id")
+
+  // Relations
+  narrative           NarrativeNFT        @relation(fields: [narrativeId], references: [tokenId])
+  miner               Miner               @relation(fields: [minerId], references: [uid])
+  validator           Validator           @relation(fields: [validatorId], references: [uid])
+  disseminationProofs DisseminationProof[]
+
+  @@map("fulfillment_activities")
+}
+
+model DisseminationProof {
+  id               String   @id @default(cuid())
+  fulfillmentId    String   @map("fulfillment_id")
+  minerId          Int      @map("miner_id")
+  targetUrl        String   @map("target_url")
+  domainAuthority  Int      @map("domain_authority")
+  disseminationScore Float  @map("dissemination_score")
+  verified         Boolean  @default(false)
+  verifiedAt       DateTime? @map("verified_at")
+  duration         Int      @default(0) // hours
+  transactionHash  String   @map("transaction_hash")
+
+  // Relations
+  fulfillment FulfillmentActivity @relation(fields: [fulfillmentId], references: [id])
+  miner       Miner               @relation(fields: [minerId], references: [uid])
+  narrative   NarrativeNFT        @relation(fields: [narrativeId], references: [tokenId])
+  narrativeId Int                 @map("narrative_id")
+
+  @@map("dissemination_proofs")
+}
+
+model MarketMetrics {
+  timestamp          DateTime @map("timestamp")
+  narrativeId        Int      @map("narrative_id")
+  totalStaked        Float    @map("total_staked")
+  stakeDelta         Float    @map("stake_delta")
+  activeStakers      Int      @map("active_stakers")
+  fulfillmentCount   Int      @map("fulfillment_count")
+  disseminationCount Int      @map("dissemination_count")
+  averageCoherence   Float    @map("average_coherence")
+  averageDemand      Float    @map("average_demand")
+
+  // Relations
+  narrative NarrativeNFT @relation(fields: [narrativeId], references: [tokenId])
+
+  @@id([timestamp, narrativeId])
+  @@map("market_metrics")
+}
+
+model Transaction {
+  id              String    @id @default(cuid())
+  userId          String    @map("user_id")
+  type            String    // stake, unstake, mint, reward
+  amount          Decimal   @db.Decimal(18, 8)
+  tokenSymbol     String    @map("token_symbol")
+  narrativeId     Int?      @map("narrative_id")
+  transactionHash String    @unique @map("transaction_hash")
+  blockNumber     Int       @map("block_number")
+  status          String    @default("pending") // pending, confirmed, failed
+  createdAt       DateTime  @default(now()) @map("created_at")
+  confirmedAt     DateTime? @map("confirmed_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [walletAddress])
+
+  @@map("transactions")
+}
+
+// Indexes for performance
+// These would be added via raw SQL or migration files
+// CREATE INDEX idx_narrative_tags ON narrative_nfts USING GIN(tags);
+// CREATE INDEX idx_narrative_embedding ON narrative_nfts USING ivfflat (embedding vector_cosine_ops);
+// CREATE INDEX idx_staking_user ON staking_positions(user_id);
+// CREATE INDEX idx_staking_narrative ON staking_positions(narrative_id);
+// CREATE INDEX idx_metrics_narrative_time ON market_metrics(narrative_id, timestamp DESC);

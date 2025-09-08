@@ -1,0 +1,676 @@
+openapi: 3.0.3
+info:
+  title: Aletheia Platform API
+  description: API for the Veritas Inversa decentralized narrative market
+  version: 1.0.0
+  contact:
+    name: Aletheia Team
+    url: https://aletheia.network
+
+servers:
+  - url: https://api.aletheia.network/v1
+    description: Production server
+  - url: http://localhost:3001/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/connect:
+    post:
+      summary: Connect Web3 wallet
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [address, signature, message]
+              properties:
+                address:
+                  type: string
+                  pattern: ^0x[a-fA-F0-9]{40}$
+                signature:
+                  type: string
+                message:
+                  type: string
+      responses:
+        200:
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /narratives:
+    get:
+      summary: List all narrative NFTs
+      tags: [Narratives]
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [staked, activity, created]
+        - name: modality
+          in: query
+          schema:
+            type: string
+            enum: [text, image, video, multimodal]
+        - name: tags
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+      responses:
+        200:
+          description: List of narratives
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Narrative'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: Create new narrative NFT
+      tags: [Narratives]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNarrative'
+      responses:
+        201:
+          description: Narrative created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Narrative'
+
+  /narratives/{id}:
+    get:
+      summary: Get narrative details
+      tags: [Narratives]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Narrative details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NarrativeDetail'
+
+  /narratives/{id}/metrics:
+    get:
+      summary: Get narrative metrics time series
+      tags: [Narratives]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [1h, 24h, 7d, 30d]
+            default: 24h
+      responses:
+        200:
+          description: Metrics time series
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MetricPoint'
+
+  /narratives/{id}/stake:
+    post:
+      summary: Stake NARR tokens on narrative
+      tags: [Staking]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount, lockupDays]
+              properties:
+                amount:
+                  type: string
+                  pattern: ^\d+(\.\d+)?$
+                lockupDays:
+                  type: integer
+                  minimum: 7
+      responses:
+        201:
+          description: Stake created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StakingPosition'
+
+  /staking/positions:
+    get:
+      summary: Get user's staking positions
+      tags: [Staking]
+      responses:
+        200:
+          description: List of positions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StakingPosition'
+
+  /staking/positions/{id}/unstake:
+    post:
+      summary: Unstake tokens
+      tags: [Staking]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Unstake initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  /semantic/similar:
+    post:
+      summary: Find semantically similar narratives
+      tags: [Semantic]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:
+                  type: string
+                  maxLength: 5000
+                threshold:
+                  type: number
+                  minimum: 0
+                  maximum: 1
+                  default: 0.8
+      responses:
+        200:
+          description: Similar narratives
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        narrative:
+                          $ref: '#/components/schemas/Narrative'
+                        similarity:
+                          type: number
+
+  /semantic/landscape:
+    get:
+      summary: Get semantic landscape data
+      tags: [Semantic]
+      responses:
+        200:
+          description: Landscape visualization data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clusters:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SemanticCluster'
+                  narratives:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SemanticPoint'
+
+  /validators:
+    get:
+      summary: List active validators
+      tags: [Validators]
+      responses:
+        200:
+          description: List of validators
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Validator'
+
+  /validators/dashboard:
+    get:
+      summary: Get validator dashboard data
+      tags: [Validators]
+      responses:
+        200:
+          description: Dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidatorDashboard'
+
+  /miners:
+    get:
+      summary: List active miners
+      tags: [Miners]
+      responses:
+        200:
+          description: List of miners
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Miner'
+
+  /miners/bounties:
+    get:
+      summary: Get bounty board
+      tags: [Miners]
+      responses:
+        200:
+          description: High-value narratives
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bounty'
+
+  /miners/proofs:
+    post:
+      summary: Submit dissemination proof
+      tags: [Miners]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisseminationProof'
+      responses:
+        201:
+          description: Proof submitted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProofReceipt'
+
+  /market/overview:
+    get:
+      summary: Get market overview
+      tags: [Market]
+      responses:
+        200:
+          description: Market statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketOverview'
+
+  /ws:
+    get:
+      summary: WebSocket connection for real-time updates
+      tags: [WebSocket]
+      responses:
+        101:
+          description: Switching Protocols
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/User'
+        expiresAt:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        walletAddress:
+          type: string
+        ens:
+          type: string
+          nullable: true
+        role:
+          type: array
+          items:
+            type: string
+            enum: [underwriter, validator, miner, observer]
+        reputation:
+          type: number
+          nullable: true
+
+    Narrative:
+      type: object
+      properties:
+        tokenId:
+          type: integer
+        name:
+          type: string
+        creator:
+          type: string
+        modality:
+          type: string
+        totalStaked:
+          type: string
+        uniqueStakers:
+          type: integer
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        lastActivity:
+          type: string
+          format: date-time
+
+    NarrativeDetail:
+      allOf:
+        - $ref: '#/components/schemas/Narrative'
+        - type: object
+          properties:
+            description:
+              type: string
+            metadataUri:
+              type: string
+            fulfillmentCount:
+              type: integer
+            disseminationCount:
+              type: integer
+            recentActivity:
+              type: array
+              items:
+                $ref: '#/components/schemas/Activity'
+
+    CreateNarrative:
+      type: object
+      required: [name, description, tags, modality]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 5000
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+        modality:
+          type: string
+          enum: [text, image, video, multimodal]
+
+    StakingPosition:
+      type: object
+      properties:
+        id:
+          type: string
+        narrativeId:
+          type: integer
+        amount:
+          type: string
+        lockupDays:
+          type: integer
+        stakedAt:
+          type: string
+          format: date-time
+        unlocksAt:
+          type: string
+          format: date-time
+        returns:
+          type: string
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+        amount:
+          type: string
+        status:
+          type: string
+        transactionHash:
+          type: string
+
+    Validator:
+      type: object
+      properties:
+        uid:
+          type: integer
+        walletAddress:
+          type: string
+        reputationScore:
+          type: number
+        consensusWeight:
+          type: number
+        totalValidations:
+          type: integer
+        isActive:
+          type: boolean
+
+    ValidatorDashboard:
+      type: object
+      properties:
+        networkHealth:
+          type: object
+        consensusAlignment:
+          type: number
+        reputationScore:
+          type: number
+        oracleCosts:
+          type: object
+        recentValidations:
+          type: array
+          items:
+            type: object
+
+    Miner:
+      type: object
+      properties:
+        uid:
+          type: integer
+        walletAddress:
+          type: string
+        specialization:
+          type: string
+        performanceScore:
+          type: number
+        totalGenerated:
+          type: integer
+        successfulDisseminations:
+          type: integer
+
+    Bounty:
+      type: object
+      properties:
+        narrative:
+          $ref: '#/components/schemas/Narrative'
+        potentialReward:
+          type: string
+        difficulty:
+          type: string
+        competitors:
+          type: integer
+
+    DisseminationProof:
+      type: object
+      required: [fulfillmentId, targetUrl]
+      properties:
+        fulfillmentId:
+          type: string
+        targetUrl:
+          type: string
+          format: uri
+
+    ProofReceipt:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        verificationPending:
+          type: boolean
+
+    SemanticCluster:
+      type: object
+      properties:
+        id:
+          type: string
+        centroid:
+          type: array
+          items:
+            type: number
+        narrativeCount:
+          type: integer
+        totalStaked:
+          type: string
+        dominantTags:
+          type: array
+          items:
+            type: string
+
+    SemanticPoint:
+      type: object
+      properties:
+        narrativeId:
+          type: integer
+        coordinates:
+          type: array
+          items:
+            type: number
+        stakeSize:
+          type: number
+
+    MetricPoint:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        totalStaked:
+          type: number
+        activeStakers:
+          type: integer
+        fulfillmentCount:
+          type: integer
+
+    MarketOverview:
+      type: object
+      properties:
+        totalNarratives:
+          type: integer
+        totalStaked:
+          type: string
+        activeUsers:
+          type: integer
+        topNarratives:
+          type: array
+          items:
+            $ref: '#/components/schemas/Narrative'
+
+    Activity:
+      type: object
+      properties:
+        type:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        details:
+          type: object
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
