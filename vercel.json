@@ -6,6 +6,5 @@
   "outputDirectory": "frontend/.next",
   "installCommand": "npm install",
   "devCommand": "npm run dev:frontend",
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet .",
   "regions": ["iad1"]
 }
