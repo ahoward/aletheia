@@ -30,11 +30,12 @@
     "lint:frontend": "cd frontend && npm run lint"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2",
-    "prettier": "^3.0.3",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
     "@typescript-eslint/parser": "^6.0.0",
-    "eslint": "^8.45.0"
+    "concurrently": "^8.2.2",
+    "eslint": "^8.45.0",
+    "prettier": "^3.0.3",
+    "puppeteer": "^24.19.0"
   },
   "engines": {
     "node": ">=20.0.0"
