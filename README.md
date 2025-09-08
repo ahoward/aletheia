@@ -124,6 +124,38 @@ Aletheia is a decentralized narrative marketplace that enables **professional na
 - **Real-time Notifications**: User feedback for all operations
 - **Loading States**: Professional loading and error handling
 
+## 📱 Application Screenshots
+
+### Dashboard View
+The main dashboard provides a comprehensive overview of your portfolio, market metrics, and trending narratives in a professional financial terminal interface.
+
+![Dashboard](docs/screenshots/01-dashboard.png)
+
+### Narratives Marketplace
+Browse and discover narratives with advanced filtering, semantic search, and detailed analytics for each narrative in the marketplace.
+
+![Narratives](docs/screenshots/02-narratives.png)
+
+### Staking Management
+Manage your staking positions, track rewards, and perform staking operations with real-time portfolio insights.
+
+![Staking](docs/screenshots/03-staking.png)
+
+### Market Analytics
+Access comprehensive market data, analytics, and trending information to make informed investment decisions.
+
+![Market](docs/screenshots/04-market.png)
+
+### Narrative Creation
+Create and publish new narratives with advanced semantic analysis and market integration tools.
+
+![Create](docs/screenshots/05-create.png)
+
+### Mobile Responsive Design
+The application is fully responsive and optimized for mobile devices while maintaining the professional interface.
+
+![Mobile Dashboard](docs/screenshots/06-mobile-dashboard.png)
+
 ## 🏗️ Development
 
 ### Backend Development
